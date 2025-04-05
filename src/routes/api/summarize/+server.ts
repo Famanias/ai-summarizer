@@ -19,9 +19,9 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
   const rows = db.prepare(`SELECT * FROM ${table} LIMIT 10`).all();
 
   // OpenRouter.ai integration
-  const apiKey = env.OPENROUTER_API_KEY; // Use SvelteKit's env
+  const apiKey = env.MISTRAL_API_KEY; // Use SvelteKit's env
   if (!apiKey) {
-    return new Response('OPENROUTER_API_KEY is not set', { status: 500 });
+    return new Response('API_KEY is not set', { status: 500 });
   }
 
   const prompt = `Summarize this data: ${JSON.stringify(rows)}`;
@@ -32,7 +32,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'deepseek/deepseek-r1',
+      model: 'mistralai/mistral-7b-instruct:free',
       messages: [{ role: 'user', content: prompt }],
     }),
   });

@@ -223,7 +223,7 @@
   <header class="bg-white shadow-sm z-10">
     <div class="px-6 py-4 flex items-center justify-between">
       <h2 class="text-xl font-semibold text-gray-800">Database Dashboard</h2>
-      <div class="flex items-center space-x-4">
+      <div class="flex items-center gap-4">
         <div class="flex items-center">
           <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
           <span class="text-sm text-gray-600">Connected to Database</span>
@@ -248,7 +248,7 @@
   <!-- Main Content -->
   <main class="flex-1 overflow-auto p-6">
     <form on:submit|preventDefault={uploadFile} enctype="multipart/form-data" class="mb-6">
-      <div class="flex items-center space-x-4">
+      <div class="flex items-center gap-4">
         <input
           type="file"
           name="dbFile"
@@ -295,9 +295,18 @@
           <h3 class="text-lg font-medium">Table: {selectedTable}</h3>
           <div class="flex gap-4">
             <button
-              on:click={() => goto(`/summaries?table=${selectedTable}`)}
+              on:click={() => {
+                if (primaryKeyColumn && selectedRows.size > 0) {
+                  // If rows are selected, send their IDs
+                  const selectedIds = Array.from(selectedRows).map(String).join(',');
+                  goto(`/summaries?table=${selectedTable}&ids=${selectedIds}`);
+                } else {
+                  // If no rows selected, send empty ids to summarize all
+                  goto(`/summaries?table=${selectedTable}`);
+                }
+              }}
               class="btn bg-emerald-600 hover:bg-emerald-700"
-              disabled={isLoading}
+              disabled={isLoading || !primaryKeyColumn}
             >
               Generate Summary
             </button>
@@ -314,9 +323,7 @@
           <table class="w-full">
             <thead>
               <tr class="bg-gray-50">
-                <th class="w-10 px-4 py-3 text-left">
-                  <input type="checkbox" disabled={isLoading} />
-                </th>
+                <th class="w-10 px-4 py-3 text-left"></th>
                 {#each columns as col}
                   <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">{col.name}</th>
                 {/each}

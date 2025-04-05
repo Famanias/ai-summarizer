@@ -7,10 +7,11 @@
     let error: string | null = null;
     let isLoading: boolean = false;
     let selectedTable: string | null = null;
-    let selectedRows: Set<any> = new Set(); // Initialize selectedRows as an empty Set
+    let selectedIds: string | null = null;
   
     onMount(async () => {
       selectedTable = $page.url.searchParams.get('table');
+      selectedIds = $page.url.searchParams.get('ids');
       if (selectedTable) {
         await summarizeTable();
       }
@@ -25,7 +26,7 @@
         const response = await fetch('/api/summarize', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table: selectedTable })
+          body: JSON.stringify({ table: selectedTable, ids: selectedIds  })
         });
         if (!response.ok) {
           throw new Error(await response.text());
@@ -67,14 +68,20 @@
               <div class="flex space-x-2">
                 <button
                   on:click={() => summarizeTable()}
-                  class="btn bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  class="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
                   disabled={isLoading}
+                  title="Regenerate summary"
                 >
-                  {isLoading ? 'Generating...' : 'Regenerate'}
-                </button>
-                <button class="btn bg-gray-100 text-gray-700 hover:bg-gray-200" disabled={isLoading}>
-                  Custom Instructions
-                </button>
+                {#if isLoading}
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 animate-spin" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                  </svg>
+                {:else}
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                  </svg>
+                {/if}
+              </button>
               </div>
             </div>
   
@@ -141,33 +148,11 @@
                 class="w-full btn bg-emerald-600 hover:bg-emerald-700"
                 disabled={isLoading}
               >
-                {isLoading ? 'Generating...' : 'Generate Summary'}
+                {isLoading ? 'Generating...' : 'Customize & Generate'}
               </button>
             </div>
           </div>
   
-          <div class="bg-white rounded-lg shadow-md overflow-hidden mt-6">
-            <div class="p-4 border-b border-gray-200">
-              <h3 class="text-lg font-medium">Selected Data</h3>
-            </div>
-  
-            <div class="p-4">
-              <p class="text-sm text-gray-600">
-                {#if selectedRows.size > 0}
-                  {selectedRows.size} rows selected from {selectedTable}
-                {:else}
-                  No data selected
-                {/if}
-              </p>
-  
-              <button
-                on:click={() => goto('/dashboard')}
-                class="mt-3 w-full btn bg-gray-100 text-gray-700 hover:bg-gray-200"
-              >
-                Modify Selection
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     {/if}

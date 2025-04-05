@@ -13,6 +13,13 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
   }
 
   const { action, table, data, id } = await request.json();
+
+  // Validate table name to prevent SQL injection
+  const validTableNameRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+  if (!validTableNameRegex.test(table)) {
+    return new Response('Invalid table name', { status: 400 });
+  }
+
   const db = new Database(dbPath);
 
   try {
@@ -25,13 +32,32 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     }
     
     if (action === 'create') {
-      const columns = Object.keys(data).join(', ');
-      const placeholders = Object.keys(data).map(() => '?').join(', ');
-      const values = Object.values(data);
+
+      // Exclude the primary key from the data (since it's auto-incremented)
+      const filteredData = { ...data };
+      delete filteredData[primaryKeyColumn];
+
+      const columns = Object.keys(filteredData).join(', ');
+      const placeholders = Object.keys(filteredData).map(() => '?').join(', ');
+      const values = Object.values(filteredData);
+
+      if (columns.length === 0) {
+        return new Response('No columns to insert after excluding primary key', { status: 400 });
+      }
+       
       db.prepare(`INSERT INTO ${table} (${columns}) VALUES (${placeholders})`).run(...values);
     } else if (action === 'update') {
-      const setClause = Object.keys(data).map((key) => `${key} = ?`).join(', ');
-      const values = Object.values(data);
+
+      const filteredData = { ...data };
+      delete filteredData[primaryKeyColumn];
+
+      const setClause = Object.keys(filteredData).map((key) => `${key} = ?`).join(', ');
+      const values = Object.values(filteredData);
+
+      if (setClause.length === 0) {
+        return new Response('No columns to update after excluding primary key', { status: 400 });
+      }
+      
       db.prepare(`UPDATE ${table} SET ${setClause} WHERE ${primaryKeyColumn} = ?`).run(...values, id);
     } else if (action === 'delete') {
       db.prepare(`DELETE FROM ${table} WHERE ${primaryKeyColumn} = ?`).run(id);

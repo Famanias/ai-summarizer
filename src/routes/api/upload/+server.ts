@@ -43,7 +43,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     writeFileSync(dbPath, buffer);
 
     // Set the dbPath in a cookie
-    cookies.set('dbPath', dbPath, { path: '/', maxAge: 10 * 60 }); // Expires in 1 hour
+    cookies.set('dbPath', dbPath, { path: '/', maxAge: 10 * 60 }); // Expires in 10 minutes
 
     // Open the database and fetch tables
     const db = new Database(dbPath, { readonly: false });

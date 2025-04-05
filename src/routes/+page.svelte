@@ -174,7 +174,12 @@
   }
 
   async function startEditing(row: any) {
-    editingRow = { ...row };
+    // Exclude the primary key from the editable fields
+    const editableRow = { ...row };
+    if (primaryKeyColumn) {
+      delete editableRow[primaryKeyColumn];
+    }
+    editingRow = { ...row, ...editableRow };
   }
 
   async function saveEdit() {
@@ -283,10 +288,23 @@
 
   {#if tables.length}
     <h2 class="text-2xl font-semibold mb-3">Tables</h2>
+    <ul class="space-y-2 mb-6">
+      {#each tables as table}
+        <li>
+          <button
+            on:click={() => loadTableData(table.name)}
+            class="btn bg-blue-500"
+            disabled={isLoading}
+          >
+            {table.name}
+          </button>
+        </li>
+      {/each}
+    </ul>
   {/if}
 
   {#if selectedTable}
-    <div class="mt-6">
+    <div class="mt-6 flex space-x-4">
       <button
         on:click={summarizeTable}
         class="btn bg-green-500 hover:bg-green-600"
@@ -301,11 +319,12 @@
       >
         {isLoading ? 'Downloading...' : 'Save Database'}
       </button>
-      {#if summary}
-        <h3 class="text-xl font-semibold mt-4">Summary</h3>
-        <p class="mt-2 p-4 bg-gray-100 rounded">{summary}</p>
-      {/if}
     </div>
+
+    {#if summary}
+      <h3 class="text-xl font-semibold mt-4">Summary</h3>
+      <p class="mt-2 p-4 bg-gray-100 rounded">{summary}</p>
+    {/if}
 
     <h2 class="text-2xl font-semibold mt-6">{selectedTable}</h2>
     <table class="table-auto w-full border-collapse border border-gray-300 mt-2">
@@ -320,15 +339,19 @@
       <tbody>
         {#each rows as row}
           <tr class="hover:bg-gray-50">
-            {#if editingRow && editingRow.id === row.id}
+            {#if editingRow && primaryKeyColumn && editingRow[primaryKeyColumn] === row[primaryKeyColumn]}
               {#each columns as col}
-                <td class="border border-gray-300 p-3">
-                  <input
-                    bind:value={editingRow[col.name]}
-                    class="border p-1 w-full"
-                    disabled={isLoading}
-                  />
-                </td>
+                {#if col.name !== primaryKeyColumn}
+                  <td class="border border-gray-300 p-3">
+                    <input
+                      bind:value={editingRow[col.name]}
+                      class="border p-1 w-full"
+                      disabled={isLoading}
+                    />
+                  </td>
+                {:else}
+                  <td class="border border-gray-300 p-3">{row[col.name]}</td>
+                {/if}
               {/each}
               <td class="border border-gray-300 p-3">
                 <button
@@ -354,7 +377,7 @@
                 <button
                   on:click={() => startEditing(row)}
                   class="btn bg-blue-500 hover:bg-blue-600 mr-2"
-                  disabled={isLoading}
+                  disabled={isLoading || !primaryKeyColumn}
                 >
                   Edit
                 </button>
@@ -375,16 +398,18 @@
     <h3 class="text-xl font-semibold mt-6">Add New Row</h3>
     <form on:submit|preventDefault={addRow} class="mt-2 space-y-4">
       {#each columns as col}
-        <div>
-          <label for={col.name} class="block text-sm font-medium">{col.name}</label>
-          <input
-            id={col.name}
-            bind:value={newRow[col.name]}
-            class="border p-2 w-full rounded"
-            disabled={isLoading}
-            placeholder={`Enter ${col.name}`}
-          />
-        </div>
+        {#if col.name !== primaryKeyColumn}
+          <div>
+            <label for={col.name} class="block text-sm font-medium">{col.name}</label>
+            <input
+              id={col.name}
+              bind:value={newRow[col.name]}
+              class="border p-2 w-full rounded"
+              disabled={isLoading}
+              placeholder={`Enter ${col.name}`}
+            />
+          </div>
+        {/if}
       {/each}
       <button type="submit" class="btn bg-blue-500 hover:bg-blue-600" disabled={isLoading}>
         {isLoading ? 'Adding...' : 'Add Row'}

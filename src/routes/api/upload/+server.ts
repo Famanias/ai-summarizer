@@ -1,54 +1,105 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import Database from 'better-sqlite3';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
-import { setDbPath, getDbPath } from '$lib/dbState';
+import { join } from 'path';
 
-export const POST: RequestHandler = async ({ request }) => {
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = ['.db'];
+
+export const POST: RequestHandler = async ({ request, cookies }) => {
+  try {
     const formData = await request.formData();
     const file = formData.get('dbFile') as File;
-  
+
+    // Validate file presence
     if (!file) {
       return new Response('No file uploaded', { status: 400 });
     }
-  
-    const uploadDir = './uploads';
-    if (!existsSync(uploadDir)) {
-      mkdirSync(uploadDir);
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      return new Response('File size exceeds 20MB limit', { status: 400 });
     }
-  
+
+    // Validate file extension
+    const fileExtension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
+      return new Response('Only .db files are allowed', { status: 400 });
+    }
+
+    // Use /tmp for Vercel
+    const uploadDir = process.env.VERCEL ? '/tmp/uploads' : './uploads';
+    if (!existsSync(uploadDir)) {
+      mkdirSync(uploadDir, { recursive: true });
+    }
+
+    // Add timestamp to avoid file name conflicts
+    const timestamp = Date.now();
+    const uniqueFileName = `${timestamp}-${file.name}`;
+    const dbPath = join(uploadDir, uniqueFileName);
+
+    // Write the file
     const buffer = Buffer.from(await file.arrayBuffer());
-    const dbPath = `${uploadDir}/${file.name}`;
     writeFileSync(dbPath, buffer);
-  
-    // Set the dbPath in the shared state
-    setDbPath(dbPath);
-  
-    const db = new Database(dbPath);
+
+    // Set the dbPath in a cookie
+    cookies.set('dbPath', dbPath, { path: '/', maxAge: 10 * 60 }); // Expires in 1 hour
+
+    // Open the database and fetch tables
+    const db = new Database(dbPath, { readonly: false });
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type='table'")
       .all();
-  
+
+    // Close the database connection
+    db.close();
+
     return new Response(JSON.stringify({ tables }), {
+      status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
-  };
-  
-  export const GET: RequestHandler = async ({ url }) => {
-    const dbPath = getDbPath();
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(`Error uploading database: ${errorMessage}`, { status: 500 });
+  }
+};
+
+export const GET: RequestHandler = async ({ url, cookies }) => {
+  try {
+    const dbPath = cookies.get('dbPath');
     if (!dbPath) {
       return new Response('No database uploaded yet', { status: 400 });
     }
-  
+
+    if (!existsSync(dbPath)) {
+      return new Response('Database file not found. Please re-upload the database.', { status: 404 });
+    }
+
     const tableName = url.searchParams.get('table');
     if (!tableName) {
       return new Response('Table name required', { status: 400 });
     }
-  
-    const db = new Database(dbPath);
+
+    // Validate tableName to prevent SQL injection
+    const validTableNameRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+    if (!validTableNameRegex.test(tableName)) {
+      return new Response('Invalid table name', { status: 400 });
+    }
+
+    const db = new Database(dbPath, { readonly: true });
     const rows = db.prepare(`SELECT * FROM ${tableName}`).all();
-    const columns = db.pragma(`table_info(${tableName})`);
-  
-    return new Response(JSON.stringify({ columns, rows }), {
+    const columns = db.pragma(`table_info(${tableName})`) as Array<{ name: string; pk: number }>;
+    const primaryKeyColumn = columns.find((col) => col.pk === 1)?.name || null;
+
+    // Close the database connection
+    db.close();
+
+    return new Response(JSON.stringify({ columns, rows, primaryKeyColumn }), {
+      status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
-  };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(`Error loading table: ${errorMessage}`, { status: 500 });
+  }
+};

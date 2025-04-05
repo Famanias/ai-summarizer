@@ -1,18 +1,29 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import Database from 'better-sqlite3';
-import { getDbPath } from '$lib/dbState';
+import { existsSync } from 'fs';
 
 
-export const POST: RequestHandler = async ({ request }) => {
-    const dbPath = getDbPath();
+export const POST: RequestHandler = async ({ request, cookies }) => {
+  const dbPath = cookies.get('dbPath');
   if (!dbPath) {
     return new Response('No database uploaded', { status: 400 });
+  }
+  if (!existsSync(dbPath)) {
+    return new Response('Database file does not exist', { status: 400 });
   }
 
   const { action, table, data, id } = await request.json();
   const db = new Database(dbPath);
 
   try {
+
+    // Get table schema to determine the primary key
+    const tableInfo = db.pragma(`table_info(${table})`) as Array<{ name: string; pk: number }>;
+    const primaryKeyColumn = tableInfo.find((col: any) => col.pk === 1)?.name;
+    if (!primaryKeyColumn) {
+      return new Response('Table has no primary key column', { status: 400 });
+    }
+    
     if (action === 'create') {
       const columns = Object.keys(data).join(', ');
       const placeholders = Object.keys(data).map(() => '?').join(', ');
@@ -21,16 +32,17 @@ export const POST: RequestHandler = async ({ request }) => {
     } else if (action === 'update') {
       const setClause = Object.keys(data).map((key) => `${key} = ?`).join(', ');
       const values = Object.values(data);
-      db.prepare(`UPDATE ${table} SET ${setClause} WHERE id = ?`).run(...values, id);
+      db.prepare(`UPDATE ${table} SET ${setClause} WHERE ${primaryKeyColumn} = ?`).run(...values, id);
     } else if (action === 'delete') {
-      db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(id);
+      db.prepare(`DELETE FROM ${table} WHERE ${primaryKeyColumn} = ?`).run(id);
     } else {
       return new Response('Invalid action', { status: 400 });
     }
-
     return new Response('Success', { status: 200 });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(`Error: ${errorMessage}`, { status: 500 });
+  } finally{
+    db.close();
   }
 };

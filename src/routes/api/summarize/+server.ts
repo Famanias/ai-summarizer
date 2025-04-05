@@ -1,18 +1,22 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import Database from 'better-sqlite3';
 import {env} from '$env/dynamic/private';
-import { getDbPath } from '$lib/dbState';
+import { existsSync } from 'fs';
 
 
-export const POST: RequestHandler = async ({ request, platform }) => {
-    const dbPath = getDbPath();
-    if (!dbPath) {
-        return new Response('No database uploaded', { status: 400 });
-    }
+export const POST: RequestHandler = async ({ request, platform, cookies }) => {
+  const dbPath = cookies.get('dbPath');
+  if (!dbPath) {
+    return new Response('No database uploaded', { status: 400 });
+  }
+
+  if (!existsSync(dbPath)) {
+    return new Response('Database file not found. Please re-upload the database.', { status: 404 });
+  }
 
   const { table } = await request.json();
   const db = new Database(dbPath);
-  const rows = db.prepare(`SELECT * FROM ${table}`).all();
+  const rows = db.prepare(`SELECT * FROM ${table} LIMIT 10`).all();
 
   // OpenRouter.ai integration
   const apiKey = env.OPENROUTER_API_KEY; // Use SvelteKit's env

@@ -271,12 +271,29 @@
     {#if isLoading}
       <p class="text-gray-500 mb-4">Loading...</p>
     {/if}
+
+    {#if tables.length}
+      <h2 class="text-2xl font-semibold mb-3">Tables</h2>
+      <ul class="flex flex-wrap gap-2 mb-6">
+        {#each tables as table}
+          <li>
+            <button
+              on:click={() => loadTableData(table.name)}
+              class="btn bg-blue-500"
+              disabled={isLoading}
+            >
+              {table.name}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
   
     {#if selectedTable}
       <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <div class="p-4 border-b border-gray-200 flex justify-between items-center">
           <h3 class="text-lg font-medium">Table: {selectedTable}</h3>
-          <div class="flex space-x-2">
+          <div class="flex gap-4">
             <button
               on:click={() => goto(`/summaries?table=${selectedTable}`)}
               class="btn bg-emerald-600 hover:bg-emerald-700"
@@ -293,7 +310,6 @@
             </button>
           </div>
         </div>
-  
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
@@ -415,8 +431,6 @@
   
   <style>
     .btn {
-      padding: 0.5rem 1rem;
-      border-radius: 0.25rem;
-      transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+      @apply text-white px-4 py-2 rounded transition-colors;
     }
   </style>

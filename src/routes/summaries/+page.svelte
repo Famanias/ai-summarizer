@@ -175,12 +175,9 @@
   
   <style>
     .btn {
-      color: #fff;
-      padding: 0.5rem 1rem;
-      border-radius: 0.25rem;
-      transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+      @apply text-white px-4 py-2 rounded transition-colors;
     }
     .prose {
-      color: #4b5563;
+      @apply text-gray-600;
     }
   </style>

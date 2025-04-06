@@ -142,6 +142,9 @@
           throw new Error(await response.text());
         }
         await loadTableData(selectedTable);
+
+        const dialog = document.getElementById('add-row-modal') as HTMLDialogElement;
+        dialog?.close();
       } catch (err) {
         error = err instanceof Error ? err.message : "Failed to add row";
       } finally {
@@ -405,6 +408,13 @@
 
           </div>
           <div class="flex gap-4">
+            <button
+              on:click={downloadDatabase}
+              class="btn bg-purple-500 hover:bg-purple-600"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Exporting...' : 'Export Database'}
+            </button>
             <button
               on:click={() => {
                 if (primaryKeyColumn && selectedRows.size > 0) {

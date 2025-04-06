@@ -4,3 +4,19 @@
 button{
     cursor: pointer;
 }
+
+.animate-fade-out {
+    animation: fadeOut 5s ease-in-out forwards;
+  }
+
+  @keyframes fadeOut {
+    0% {
+      opacity: 1;
+    }
+    80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }

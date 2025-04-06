@@ -110,8 +110,7 @@
       const rows = db.prepare(`SELECT * FROM ${tableName}`).all();
       const columns = db.pragma(`table_info(${tableName})`) as Array<{ name: string; pk: number }>;
       const primaryKeyColumn = columns.find((col) => col.pk === 1)?.name || null;
-
-      // db.close();
+      db.close();
 
       return new Response(JSON.stringify({ columns, rows, primaryKeyColumn }), {
         status: 200,

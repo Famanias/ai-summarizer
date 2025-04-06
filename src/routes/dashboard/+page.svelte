@@ -265,7 +265,7 @@
       isLoading = false;
     }
   }
-  </script>
+</script>
   
   <!-- Header -->
   <header class="bg-white shadow-sm z-10">
@@ -304,7 +304,7 @@
           class="border p-2 rounded file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-500 file:text-white hover:file:bg-blue-600"
         />
         <button type="submit" class="btn bg-blue-500 hover:bg-blue-600" disabled={isLoading}>
-          {isLoading ? 'Uploading...' : 'Upload Database'}
+          Upload Database
         </button>
       </div>
     </form>

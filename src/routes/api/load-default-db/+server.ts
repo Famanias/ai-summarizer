@@ -1,49 +1,39 @@
 // src/routes/api/load-default-db/+server.ts
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync } from 'fs';
 import { join } from 'path';
 import Database from 'better-sqlite3';
-import { writeFileSync, mkdirSync } from 'fs';
+import { writeFileSync } from 'fs';
 import type { RequestHandler } from '@sveltejs/kit';
 
 export const POST: RequestHandler = async ({ cookies }) => {
-    const defaultDbPath = join(process.cwd(), 'static', 'default.db');
-    
-    if (!existsSync(defaultDbPath)) {
-        return new Response(JSON.stringify({ success: false }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
+    // Path handling for different environments
+    const staticDir = process.env.VERCEL ? join(process.cwd(), 'static') : 'static';
+    const defaultDbPath = join(staticDir, 'default.db');
+
+    console.log('Default DB Path:', defaultDbPath);
 
     try {
-        // Use /tmp for Vercel
-        const uploadDir = process.env.VERCEL ? '/tmp/uploads' : './uploads';
-        if (!existsSync(uploadDir)) {
-            mkdirSync(uploadDir, { recursive: true });
-        }
-
-        // Create a unique path for the loaded database
-        // const timestamp = Date.now();
-        // const dbPath = join(uploadDir, `default-${timestamp}.db`);
+        // In Vercel, we can only write to /tmp
+        const dbPath = process.env.VERCEL ? '/tmp/current.db' : './uploads/current.db';
+        console.log('Destination DB Path:', dbPath);
         
-        // // Copy the default database to the uploads directory
-        // const dbFile = readFileSync(defaultDbPath);
-        // writeFileSync(dbPath, dbFile);
-
-        const dbPath = join(uploadDir, 'current.db');
+        // Read and copy the database file
         const dbFile = readFileSync(defaultDbPath);
         writeFileSync(dbPath, dbFile);
-        cookies.set('dbPath', dbPath, { path: '/', maxAge: 10 * 60 });
+        console.log('Database file copied successfully');
 
-        // Set the dbPath in a cookie (same as upload endpoint)
-        cookies.set('dbPath', dbPath, { path: '/', maxAge: 10 * 60 });
+        // Set cookie
+        cookies.set('dbPath', dbPath, {
+            path: '/',
+            maxAge: 10 * 60,
+            secure: process.env.NODE_ENV === 'production'
+        });
 
-        // Open the database and fetch tables (same as upload endpoint)
-        const db = new Database(dbPath, { readonly: false });
+        // Open database (readonly in production)
+        const db = new Database(dbPath, { readonly: true });
         const tables = db
             .prepare("SELECT name FROM sqlite_master WHERE type='table'")
             .all();
-
         db.close();
 
         return new Response(JSON.stringify({ success: true, tables }), {
@@ -51,9 +41,9 @@ export const POST: RequestHandler = async ({ cookies }) => {
             headers: { 'Content-Type': 'application/json' }
         });
     } catch (error) {
-        return new Response(JSON.stringify({ 
-            success: false, 
-            error: error instanceof Error ? error.message : 'Failed to load default database'
+        return new Response(JSON.stringify({
+            success: false,
+            error: error instanceof Error ? error.message : 'Database load failed'
         }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }

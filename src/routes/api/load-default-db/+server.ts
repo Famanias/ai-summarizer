@@ -21,15 +21,6 @@ export const POST: RequestHandler = async ({ cookies }) => {
         if (!existsSync(uploadDir)) {
             mkdirSync(uploadDir, { recursive: true });
         }
-
-        // Create a unique path for the loaded database
-        // const timestamp = Date.now();
-        // const dbPath = join(uploadDir, `default-${timestamp}.db`);
-        
-        // // Copy the default database to the uploads directory
-        // const dbFile = readFileSync(defaultDbPath);
-        // writeFileSync(dbPath, dbFile);
-
         const dbPath = join(uploadDir, 'current.db');
         const dbFile = readFileSync(defaultDbPath);
         writeFileSync(dbPath, dbFile);

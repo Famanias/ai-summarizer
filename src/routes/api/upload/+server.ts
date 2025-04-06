@@ -71,17 +71,34 @@
   export const GET: RequestHandler = async ({ url, cookies }) => {
     try {
       const dbPath = cookies.get('dbPath');
-      if (!dbPath) {
-        return new Response('No database uploaded yet', { status: 400 });
-      }
-
-      if (!existsSync(dbPath)) {
-        return new Response('Database file not found. Please re-upload the database.', { status: 404 });
-      }
-
       const tableName = url.searchParams.get('table');
+
+      if (!dbPath || !existsSync(dbPath)) {
+        // Fallback to default database if no uploaded dbPath
+        const defaultDbPath = join(process.cwd(), 'static', 'default.db');
+        if (!existsSync(defaultDbPath)) {
+          return new Response(JSON.stringify({ tables: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        const db = new Database(defaultDbPath, { readonly: true });
+        const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+        db.close();
+        return new Response(JSON.stringify({ tables }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+  
+      const db = new Database(dbPath, { readonly: true });
       if (!tableName) {
-        return new Response('Table name required', { status: 400 });
+        const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+        db.close();
+        return new Response(JSON.stringify({ tables }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
 
       // Validate tableName to prevent SQL injection
@@ -90,13 +107,11 @@
         return new Response('Invalid table name', { status: 400 });
       }
 
-      const db = new Database(dbPath, { readonly: true });
       const rows = db.prepare(`SELECT * FROM ${tableName}`).all();
       const columns = db.pragma(`table_info(${tableName})`) as Array<{ name: string; pk: number }>;
       const primaryKeyColumn = columns.find((col) => col.pk === 1)?.name || null;
 
-      // Close the database connection
-      db.close();
+      // db.close();
 
       return new Response(JSON.stringify({ columns, rows, primaryKeyColumn }), {
         status: 200,

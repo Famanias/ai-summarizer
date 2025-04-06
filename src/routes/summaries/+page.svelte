@@ -46,12 +46,6 @@
   <header class="bg-white shadow-sm z-10">
     <div class="px-6 py-4 flex items-center justify-between">
       <h2 class="text-xl font-semibold text-gray-800">AI-Generated Summary</h2>
-      <div class="flex items-center space-x-4">
-        <div class="flex items-center">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
-          <span class="text-sm text-gray-600">Connected to Database</span>
-        </div>
-      </div>
     </div>
   </header>
   

@@ -17,6 +17,25 @@
     const MAX_FILE_SIZE = 20 * 1024 * 1024;
   
     onMount(async () => {
+      try {
+        const defaultDbResponse = await fetch('/api/load-default-db', {
+          method: 'POST'
+        });
+        
+        if (defaultDbResponse.ok) {
+          const data = await defaultDbResponse.json();
+          if (data.success) {
+            tables = data.tables || [];
+            if (tables.length > 0) {
+              await loadTableData(tables[0].name);
+            }
+            return;
+          }
+        }
+      } catch (e) {
+        console.log("No default.db found or error loading it", e);
+      }
+
       const response = await fetch('/api/check-db', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
@@ -277,7 +296,7 @@
         {#each tables as table}
           <button
             on:click={() => loadTableData(table.name)}
-            class="px-3 py-1.5 rounded-md text-sm {$selectedTable === table.name ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}"
+            class="px-3 py-1.5 rounded-md text-sm {selectedTable === table.name ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-900 hover:text-white'}"
           >
             {table.name}
           </button>
@@ -341,7 +360,7 @@
       <p class="text-gray-500 mb-4">Loading...</p>
     {/if}
 
-    {#if tables.length}
+    <!-- {#if tables.length}
       <h2 class="text-2xl font-semibold mb-3">Tables</h2>
       <ul class="flex flex-wrap gap-2 mb-6">
         {#each tables as table}
@@ -356,7 +375,7 @@
           </li>
         {/each}
       </ul>
-    {/if}
+    {/if} -->
   
     {#if selectedTable}
       <div class="bg-white rounded-lg shadow-md overflow-hidden">

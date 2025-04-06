@@ -22,10 +22,9 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
   if (idsParam) {
     ids = (idsParam as string).split(',').map((id: string): number | string => {
       const trimmed: string = id.trim();
-      // Try to convert to number, but keep as string if NaN
       const num: number = Number(trimmed);
       return isNaN(num) ? trimmed : num;
-    }).filter((id: number | string) => id !== ''); // Filter out empty strings
+    }).filter((id: number | string) => id !== '');
   }
   
   console.log('Parsed ids:', ids);
@@ -36,27 +35,15 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
 
     const tableInfo = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string; pk: number }[];
     const primaryKey = tableInfo.find((col) => col.pk === 1)?.name;
-    console.log('Primary key column:', primaryKey);
 
-    console.log('Checking conditions:');
-    console.log('ids exists?', !!ids);
-    console.log('ids.length > 0?', ids && ids.length > 0);
-    console.log('primaryKey exists?', !!primaryKey);
-    console.log('primaryKey value:', primaryKey);
-    console.log('All conditions true?', ids && ids.length > 0 && primaryKey);
     let rows;
     if(ids  && ids.length > 0 && primaryKey){
       const placeholders = ids.map(() => '?').join(',');
       const sql = `SELECT * FROM ${table} WHERE ${primaryKey} IN (${placeholders})`;
 
-      console.log('Executing query:', sql);
-      console.log('With parameters:', ids);
-
       const stmt = db.prepare(sql);
       rows = stmt.all(...ids);
 
-      console.log('Query returned:', rows.length, 'rows');
-      console.log('First row:', rows[0]);
     } else{
       const sql = `SELECT * FROM ${table} LIMIT 100`;
       rows = db.prepare(sql).all();
@@ -68,7 +55,7 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
       return new Response('API Key is not set', { status: 500 });
     }
 
-    const prompt = `Summarize this data: ${JSON.stringify(rows)}`;
+    const prompt = `Provide a detailed Summarization and relevant connection between the following data: ${JSON.stringify(rows)}`;
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {

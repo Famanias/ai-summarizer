@@ -23,12 +23,17 @@ export const POST: RequestHandler = async ({ cookies }) => {
         }
 
         // Create a unique path for the loaded database
-        const timestamp = Date.now();
-        const dbPath = join(uploadDir, `default-${timestamp}.db`);
+        // const timestamp = Date.now();
+        // const dbPath = join(uploadDir, `default-${timestamp}.db`);
         
-        // Copy the default database to the uploads directory
+        // // Copy the default database to the uploads directory
+        // const dbFile = readFileSync(defaultDbPath);
+        // writeFileSync(dbPath, dbFile);
+
+        const dbPath = join(uploadDir, 'current.db');
         const dbFile = readFileSync(defaultDbPath);
         writeFileSync(dbPath, dbFile);
+        cookies.set('dbPath', dbPath, { path: '/', maxAge: 10 * 60 });
 
         // Set the dbPath in a cookie (same as upload endpoint)
         cookies.set('dbPath', dbPath, { path: '/', maxAge: 10 * 60 });

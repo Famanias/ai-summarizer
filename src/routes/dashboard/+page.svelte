@@ -35,19 +35,7 @@
       } catch (e) {
         console.log("No default.db found or error loading it", e);
       }
-
-      const response = await fetch('/api/check-db', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.hasDb) {
-          await fetchTables();
-        } else {
-          error = 'No database found. Please upload a database file.';
-        }
-      }
+      
     });
   
     async function fetchTables() {

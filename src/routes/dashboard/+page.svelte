@@ -217,6 +217,38 @@
       }
       selectedRows = new Set(selectedRows);
     }
+
+    async function downloadDatabase() {
+    isLoading = true;
+    error = null;
+    try {
+      const response = await fetch('/api/download', {
+        method: 'GET'
+      });
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+
+      //date and time file name
+      const now = new Date();
+      const formattedDate = now.toISOString().slice(0, 10).replace(/-/g, '-');
+      const formattedTime = now.toTimeString().slice(0, 8).replace(/:/g, '-');
+      a.download = `database_${formattedDate}_${formattedTime}.db`
+
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Failed to download database';
+    } finally {
+      isLoading = false;
+    }
+  }
   </script>
   
   <!-- Header -->
@@ -292,7 +324,86 @@
     {#if selectedTable}
       <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <div class="p-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 class="text-lg font-medium">Table: {selectedTable}</h3>
+          <div class="flex items-center">
+            <h3 class="text-lg font-medium">{selectedTable}</h3>
+            <div class="relative">
+              <button
+                on:click={(event) => {
+                  const dialog = document.getElementById('add-row-modal') as HTMLDialogElement;
+                  const button = event.currentTarget as HTMLButtonElement;
+                  const rect = button.getBoundingClientRect();
+            
+                  dialog.style.position = 'absolute';
+                  dialog.style.top = `${rect.bottom + window.scrollY}px`;
+                  dialog.style.left = `${rect.left + window.scrollX}px`; 
+            
+                  dialog?.showModal();
+                }}
+                class="flex items-center justify-center p-2 text-gray-900 hover:text-gray-700 transition-colors disabled:opacity-50"
+                disabled={isLoading}
+                aria-label={`Add new row to ${selectedTable}`}
+                title={`Add New ${selectedTable}`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="text-gray-900 hover:text-gray-700"
+                >
+                  <path d="M5 12h14" />
+                  <path d="M12 5v14" />
+                </svg>
+              </button>
+            
+              <!-- Add Row Modal -->
+              <dialog
+                id="add-row-modal"
+                class="border border-gray-300 rounded-lg shadow-lg p-4 w-80 bg-white backdrop:bg-black/10"
+              >
+                <h3 class="text-xl font-semibold mb-4">Add {selectedTable}</h3>
+                <form on:submit|preventDefault={addRow} class="gap-y-4">
+                  {#each columns as col}
+                    {#if col.name !== primaryKeyColumn}
+                      <div>
+                        <label for={col.name} class="block text-sm font-medium text-gray-700">{col.name}</label>
+                        <input
+                          id={col.name}
+                          bind:value={newRow[col.name]}
+                          class="border border-gray-300 p-2 w-full rounded-md disabled:bg-gray-100"
+                          disabled={isLoading}
+                          placeholder={`Enter ${col.name}`}
+                        />
+                      </div>
+                    {/if}
+                  {/each}
+                  <div class="flex justify-end gap-x-2 mt-4">
+                    <button
+                      type="button"
+                      on:click={() => (document.getElementById('add-row-modal') as HTMLDialogElement)?.close()}
+                      class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 disabled:bg-gray-400"
+                      disabled={isLoading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-400"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? 'Adding...' : `Add ${selectedTable}`}
+                    </button>
+                  </div>
+                </form>
+              </dialog>
+            </div>
+
+          </div>
           <div class="flex gap-4">
             <button
               on:click={() => {
@@ -310,13 +421,7 @@
             >
               Generate Summary
             </button>
-            <button
-              on:click={() => (document.getElementById('add-row-modal') as HTMLDialogElement)?.showModal()}
-              class="btn bg-gray-900 hover:bg-gray-800"
-              disabled={isLoading}
-            >
-              Add Row
-            </button>
+
           </div>
         </div>
         <div class="overflow-x-auto">
@@ -400,39 +505,7 @@
         </div>
       </div>
   
-      <!-- Add Row Modal -->
-      <dialog id="add-row-modal" class="p-6 rounded-lg shadow-lg">
-        <h3 class="text-xl font-semibold mb-4">Add New Row</h3>
-        <form on:submit|preventDefault={addRow} class="space-y-4">
-          {#each columns as col}
-            {#if col.name !== primaryKeyColumn}
-              <div>
-                <label for={col.name} class="block text-sm font-medium">{col.name}</label>
-                <input
-                  id={col.name}
-                  bind:value={newRow[col.name]}
-                  class="border p-2 w-full rounded-md"
-                  disabled={isLoading}
-                  placeholder={`Enter ${col.name}`}
-                />
-              </div>
-            {/if}
-          {/each}
-          <div class="flex justify-end space-x-2">
-            <button
-              type="button"
-              on:click={() => (document.getElementById('add-row-modal') as HTMLDialogElement)?.close()}
-              class="btn bg-gray-500 hover:bg-gray-600"
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-            <button type="submit" class="btn bg-blue-500 hover:bg-blue-600" disabled={isLoading}>
-              {isLoading ? 'Adding...' : 'Add Row'}
-            </button>
-          </div>
-        </form>
-      </dialog>
+
     {/if}
   </main>
   

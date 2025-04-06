@@ -1,2 +1,6 @@
 @import 'tailwindcss';
 @import "tailwindcss/preflight";
+
+button{
+    cursor: pointer;
+}

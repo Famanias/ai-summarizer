@@ -116,25 +116,22 @@
             </div>
   
             <div class="p-4 space-y-4">
-              <div>
+              <div class="mb-4">
                 <label for="data-source" class="block text-sm font-medium text-gray-700 mb-1">Data Source</label>
-                <select id="data-source" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                  <option>{selectedTable} table</option>
-                  <option>Custom query</option>
-                </select>
+                <div id="data-source" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  {selectedTable} table
+                </div>
               </div>
-  
-              <div>
+              <div class="mb-4">
                 <label for="summary-type" class="block text-sm font-medium text-gray-700 mb-1">Summary Type</label>
                 <select id="summary-type" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                  <option>General insights</option>
+                  <option>Descriptive Summary</option>
                   <option>Statistical analysis</option>
-                  <option>Trend detection</option>
+                  <option>Comparison</option>
                   <option>Recommendations</option>
                 </select>
               </div>
-  
-              <div>
+              <div class="mb-4">
                 <label for="custom-instructions" class="block text-sm font-medium text-gray-700 mb-1">Custom Instructions</label>
                 <textarea
                   id="custom-instructions"

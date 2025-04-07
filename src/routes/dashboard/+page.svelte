@@ -1,218 +1,27 @@
+<!-- src/routes/dashboard/+page.svelte -->
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { databaseUploaded } from '$lib/index';
-
-  let tables: any[] = [];
-  let selectedTable: string | null = null;
-  let columns: any[] = [];
-  let rows: any[] = [];
-  let newRow: Record<string, any> = {};
-  let error: string | null = null;
-  let isLoading: boolean = false;
-  let editingRow: any = null;
-  let primaryKeyColumn: string | null = null;
-  let selectedRows: Set<number | string> = new Set();
+  import { 
+    _tables, _selectedTable, _columns, _rows, _newRow, _error, _isLoading, _editingRow, _primaryKeyColumn, _selectedRows,
+    _fetchTables, _loadTableData, _addRow, _startEditing, _saveEdit, _deleteRow, _toggleRowSelection, _downloadDatabase 
+  } from './+page';
 
   let unsubscribe: () => void;
 
   onMount(async () => {
-    await fetchTables(); // Initial load on client side
-
-    // Subscribe to databaseUploaded store
+    await _fetchTables();
     unsubscribe = databaseUploaded.subscribe(async (value) => {
-      if (value !== undefined) { // Ensure it only runs after initialization
-        await fetchTables(); // Refresh tables when a new database is uploaded
+      if (value !== undefined) {
+        await _fetchTables();
       }
     });
   });
 
   onDestroy(() => {
-    if (unsubscribe) unsubscribe(); // Clean up subscription
+    if (unsubscribe) unsubscribe();
   });
-
-  async function fetchTables() {
-    isLoading = true;
-    error = null;
-    try {
-      const response = await fetch('/api/upload', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-      const data = await response.json();
-      tables = data.tables || [];
-      if (tables.length > 0) {
-        await loadTableData(tables[0].name);
-      }
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to load tables';
-    } finally {
-      isLoading = false;
-    }
-  }
-
-  async function loadTableData(tableName: string) {
-    isLoading = true;
-    error = null;
-    try {
-      selectedTable = tableName;
-      const response = await fetch(`/api/upload?table=${tableName}`);
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-      const data = await response.json();
-      columns = data.columns || [];
-      rows = data.rows || [];
-      primaryKeyColumn = data.primaryKeyColumn || null;
-      if (!primaryKeyColumn) {
-        error = 'Table has no primary key column. Edit and delete operations are disabled.';
-      }
-      newRow = columns
-        .filter((col: any) => col.name !== primaryKeyColumn)
-        .reduce((acc: any, col: any) => ({ ...acc, [col.name]: '' }), {});
-      selectedRows.clear();
-    } catch (err) {
-      error = err instanceof Error ? err.message : `Failed to load table ${tableName}`;
-      columns = [];
-      rows = [];
-    } finally {
-      isLoading = false;
-    }
-  }
-
-  async function addRow() {
-    if (!selectedTable) return;
-    for (const [key, value] of Object.entries(newRow)) {
-      if (value === '' && key !== primaryKeyColumn) {
-        error = `Please fill in ${key}`;
-        return;
-      }
-    }
-    isLoading = true;
-    error = null;
-    try {
-      const response = await fetch('/api/edit', {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "create", table: selectedTable, data: newRow }),
-      });
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-      await loadTableData(selectedTable);
-
-      const dialog = document.getElementById('add-row-modal') as HTMLDialogElement;
-      dialog?.close();
-    } catch (err) {
-      error = err instanceof Error ? err.message : "Failed to add row";
-    } finally {
-      isLoading = false;
-    }
-  }
-
-  async function startEditing(row: any) {
-    const editableRow = { ...row };
-    if (primaryKeyColumn) {
-      delete editableRow[primaryKeyColumn];
-    }
-    editingRow = { ...row, ...editableRow };
-  }
-
-  async function saveEdit() {
-    if (!selectedTable || !editingRow || !primaryKeyColumn) return;
-    isLoading = true;
-    error = null;
-    try {
-      const response = await fetch('/api/edit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'update',
-          table: selectedTable,
-          data: editingRow,
-          id: editingRow[primaryKeyColumn]
-        })
-      });
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-      editingRow = null;
-      await loadTableData(selectedTable);
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to update row';
-    } finally {
-      isLoading = false;
-    }
-  }
-
-  async function deleteRow(row: any) {
-    if (!selectedTable || !primaryKeyColumn) return;
-    isLoading = true;
-    error = null;
-    try {
-      const response = await fetch('/api/edit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'delete',
-          table: selectedTable,
-          id: row[primaryKeyColumn]
-        })
-      });
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-      await loadTableData(selectedTable);
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to delete row.';
-    } finally {
-      isLoading = false;
-    }
-  }
-
-  function toggleRowSelection(rowId: number | string) {
-    if (selectedRows.has(rowId)) {
-      selectedRows.delete(rowId);
-    } else {
-      selectedRows.add(rowId);
-    }
-    selectedRows = new Set(selectedRows);
-  }
-
-  async function downloadDatabase() {
-    isLoading = true;
-    error = null;
-    try {
-      const response = await fetch('/api/download', {
-        method: 'GET'
-      });
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-
-      //date and time file name
-      const now = new Date();
-      const formattedDate = now.toISOString().slice(0, 10).replace(/-/g, '-');
-      const formattedTime = now.toTimeString().slice(0, 8).replace(/:/g, '-');
-      a.download = `database_${formattedDate}_${formattedTime}.db`
-
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to download database';
-    } finally {
-      isLoading = false;
-    }
-  }
 </script>
 
 <!-- Header -->
@@ -221,8 +30,9 @@
     <div class="flex items-center gap-4"> 
       <h2 class="text-xl font-semibold text-gray-800">Database Dashboard</h2>
       <button
-        on:click={downloadDatabase}
+        on:click={_downloadDatabase}
         title="Export Database"
+        aria-label="Export Database"
       >
         <svg 
           xmlns="http://www.w3.org/2000/svg" 
@@ -236,12 +46,12 @@
     </div>
   </div>
 
-  {#if tables.length}
+  {#if $_tables.length}
     <div class="px-6 py-2 border-t border-gray-200 bg-gray-50 flex items-center space-x-2">
-      {#each tables as table}
+      {#each $_tables as table}
         <button
-          on:click={() => loadTableData(table.name)}
-          class="px-3 py-1.5 rounded-md text-sm {selectedTable === table.name ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-900 hover:text-white'}"
+          on:click={() => _loadTableData(table.name)}
+          class="px-3 py-1.5 rounded-md text-sm {$_selectedTable === table.name ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-900 hover:text-white'}"
         >
           {table.name}
         </button>
@@ -252,7 +62,7 @@
 
 <!-- Main Content -->
 <main class="flex-1 overflow-auto p-6">
-  {#if error}
+  {#if $_error}
     <div class="fixed top-4 right-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded z-50 animate-fade-out" role="alert">
       <div class="flex items-center">
         <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,20 +73,20 @@
             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
           />
         </svg>
-        <p>{error}</p>
+        <p>{$_error}</p>
       </div>
     </div>
   {/if}
 
-  {#if isLoading}
+  {#if $_isLoading}
     <p class="text-gray-500 mb-4">Loading...</p>
   {/if}
 
-  {#if selectedTable}
+  {#if $_selectedTable}
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
       <div class="p-4 border-b border-gray-200 flex justify-between items-center">
         <div class="flex items-center">
-          <h3 class="text-lg font-medium">{selectedTable}</h3>
+          <h3 class="text-lg font-medium">{$_selectedTable}</h3>
           <div class="relative">
             <button
               on:click={(event) => {
@@ -291,9 +101,9 @@
                 dialog?.showModal();
               }}
               class="flex items-center justify-center p-2 text-gray-900 hover:text-gray-700 transition-colors disabled:opacity-50"
-              disabled={isLoading}
-              aria-label={`Add new row to ${selectedTable}`}
-              title={`Add New ${selectedTable}`}
+              disabled={$_isLoading}
+              aria-label={`Add new row to ${$_selectedTable}`}
+              title={`Add New ${$_selectedTable}`}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -317,17 +127,17 @@
               id="add-row-modal"
               class="border border-gray-300 rounded-lg shadow-lg p-4 w-80 bg-white backdrop:bg-black/10"
             >
-              <h3 class="text-xl font-semibold mb-4">Add {selectedTable}</h3>
-              <form on:submit|preventDefault={addRow} class="gap-y-4">
-                {#each columns as col}
-                  {#if col.name !== primaryKeyColumn}
+              <h3 class="text-xl font-semibold mb-4">Add {$_selectedTable}</h3>
+              <form on:submit|preventDefault={_addRow} class="gap-y-4">
+                {#each $_columns as col}
+                  {#if col.name !== $_primaryKeyColumn}
                     <div>
                       <label for={col.name} class="block text-sm font-medium text-gray-700">{col.name}</label>
                       <input
                         id={col.name}
-                        bind:value={newRow[col.name]}
+                        bind:value={$_newRow[col.name]}
                         class="border border-gray-300 p-2 w-full rounded-md disabled:bg-gray-100"
-                        disabled={isLoading}
+                        disabled={$_isLoading}
                         placeholder={`Enter ${col.name}`}
                       />
                     </div>
@@ -338,16 +148,16 @@
                     type="button"
                     on:click={() => (document.getElementById('add-row-modal') as HTMLDialogElement)?.close()}
                     class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 disabled:bg-gray-400"
-                    disabled={isLoading}
+                    disabled={$_isLoading}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-400"
-                    disabled={isLoading}
+                    disabled={$_isLoading}
                   >
-                    {isLoading ? 'Adding...' : `Add ${selectedTable}`}
+                    {$_isLoading ? 'Adding...' : `Add ${$_selectedTable}`}
                   </button>
                 </div>
               </form>
@@ -355,18 +165,16 @@
           </div>
         </div>
         <div class="flex gap-4">
-
           <button
             on:click={() => {
-              if (primaryKeyColumn && selectedRows.size > 0) {
-                const selectedIds = Array.from(selectedRows).map(String).join(',');
-                goto(`/summaries?table=${selectedTable}&ids=${selectedIds}`);
+              if ($_primaryKeyColumn && $_selectedRows.size > 0) {
+                const selectedIds = Array.from($_selectedRows).map(String).join(',');
+                goto(`/summaries?table=${$_selectedTable}&ids=${selectedIds}`);
               } else {
-                goto(`/summaries?table=${selectedTable}`);
+                goto(`/summaries?table=${$_selectedTable}`);
               }
             }}
             class="btn bg-emerald-600 hover:bg-emerald-700"
-            disabled={isLoading || !primaryKeyColumn}
           >
             Generate Summary
           </button>
@@ -377,32 +185,32 @@
           <thead>
             <tr class="bg-gray-50">
               <th class="w-10 px-4 py-3 text-left"></th>
-              {#each columns as col}
+              {#each $_columns as col}
                 <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">{col.name}</th>
               {/each}
               <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {#each rows as row}
+            {#each $_rows as row}
               <tr class="border-t border-gray-200 hover:bg-gray-50">
                 <td class="px-4 py-3">
                   <input
                     type="checkbox"
-                    checked={!!primaryKeyColumn && selectedRows.has(row[primaryKeyColumn])}
-                    on:change={() => primaryKeyColumn && toggleRowSelection(row[primaryKeyColumn])}
+                    checked={!!$_primaryKeyColumn && $_selectedRows.has(row[$_primaryKeyColumn])}
+                    on:change={() => $_primaryKeyColumn && _toggleRowSelection(row[$_primaryKeyColumn])}
                     class="rounded text-emerald-600"
-                    disabled={isLoading}
+                    disabled={$_isLoading}
                   />
                 </td>
-                {#if editingRow && primaryKeyColumn && editingRow[primaryKeyColumn] === row[primaryKeyColumn]}
-                  {#each columns as col}
-                    {#if col.name !== primaryKeyColumn}
+                {#if $_editingRow && $_primaryKeyColumn && $_editingRow[$_primaryKeyColumn] === row[$_primaryKeyColumn]}
+                  {#each $_columns as col}
+                    {#if col.name !== $_primaryKeyColumn}
                       <td class="px-4 py-3">
                         <input
-                          bind:value={editingRow[col.name]}
+                          bind:value={$_editingRow[col.name]}
                           class="border p-1 w-full rounded-md"
-                          disabled={isLoading}
+                          disabled={$_isLoading}
                         />
                       </td>
                     {:else}
@@ -411,36 +219,36 @@
                   {/each}
                   <td class="px-4 py-3">
                     <button
-                      on:click={saveEdit}
+                      on:click={_saveEdit}
                       class="btn bg-green-500 hover:bg-green-600 mr-2"
-                      disabled={isLoading}
+                      disabled={$_isLoading}
                     >
                       Save
                     </button>
                     <button
-                      on:click={() => (editingRow = null)}
+                      on:click={() => _editingRow.set(null)}
                       class="btn bg-gray-500 hover:bg-gray-600"
-                      disabled={isLoading}
+                      disabled={$_isLoading}
                     >
                       Cancel
                     </button>
                   </td>
                 {:else}
-                  {#each columns as col}
+                  {#each $_columns as col}
                     <td class="px-4 py-3 text-sm">{row[col.name]}</td>
                   {/each}
                   <td class="px-4 py-3">
                     <button
-                      on:click={() => startEditing(row)}
+                      on:click={() => _startEditing(row)}
                       class="btn bg-blue-500 hover:bg-blue-600 mr-2"
-                      disabled={isLoading || !primaryKeyColumn}
+                      disabled={$_isLoading || !$_primaryKeyColumn}
                     >
                       Edit
                     </button>
                     <button
-                      on:click={() => deleteRow(row)}
+                      on:click={() => _deleteRow(row)}
                       class="btn bg-red-500 hover:bg-red-600"
-                      disabled={isLoading || !primaryKeyColumn}
+                      disabled={$_isLoading || !$_primaryKeyColumn}
                     >
                       Delete
                     </button>

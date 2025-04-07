@@ -33,9 +33,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     
     if (action === 'create') {
 
-      // Exclude the primary key from the data (since it's auto-incremented)
       const filteredData = { ...data };
-      delete filteredData[primaryKeyColumn];
+      // delete filteredData[primaryKeyColumn];
 
       const columns = Object.keys(filteredData).join(', ');
       const placeholders = Object.keys(filteredData).map(() => '?').join(', ');

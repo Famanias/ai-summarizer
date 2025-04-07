@@ -101,7 +101,6 @@
                 dialog?.showModal();
               }}
               class="flex items-center justify-center p-2 text-gray-900 hover:text-gray-700 transition-colors disabled:opacity-50"
-              disabled={$_isLoading}
               aria-label={`Add new row to ${$_selectedTable}`}
               title={`Add New ${$_selectedTable}`}
             >
@@ -137,7 +136,6 @@
                         id={col.name}
                         bind:value={$_newRow[col.name]}
                         class="border border-gray-300 p-2 w-full rounded-md disabled:bg-gray-100"
-                        disabled={$_isLoading}
                         placeholder={`Enter ${col.name}`}
                       />
                     </div>
@@ -148,16 +146,14 @@
                     type="button"
                     on:click={() => (document.getElementById('add-row-modal') as HTMLDialogElement)?.close()}
                     class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 disabled:bg-gray-400"
-                    disabled={$_isLoading}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-400"
-                    disabled={$_isLoading}
                   >
-                    {$_isLoading ? 'Adding...' : `Add ${$_selectedTable}`}
+                  Add ${$_selectedTable}
                   </button>
                 </div>
               </form>
@@ -200,7 +196,6 @@
                     checked={!!$_primaryKeyColumn && $_selectedRows.has(row[$_primaryKeyColumn])}
                     on:change={() => $_primaryKeyColumn && _toggleRowSelection(row[$_primaryKeyColumn])}
                     class="rounded text-emerald-600"
-                    disabled={$_isLoading}
                   />
                 </td>
                 {#if $_editingRow && $_primaryKeyColumn && $_editingRow[$_primaryKeyColumn] === row[$_primaryKeyColumn]}
@@ -210,7 +205,6 @@
                         <input
                           bind:value={$_editingRow[col.name]}
                           class="border p-1 w-full rounded-md"
-                          disabled={$_isLoading}
                         />
                       </td>
                     {:else}
@@ -221,14 +215,12 @@
                     <button
                       on:click={_saveEdit}
                       class="btn bg-green-500 hover:bg-green-600 mr-2"
-                      disabled={$_isLoading}
                     >
                       Save
                     </button>
                     <button
                       on:click={() => _editingRow.set(null)}
                       class="btn bg-gray-500 hover:bg-gray-600"
-                      disabled={$_isLoading}
                     >
                       Cancel
                     </button>

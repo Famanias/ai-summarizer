@@ -137,9 +137,8 @@
               <button
                 on:click={() => summarizeTable()}
                 class="w-full btn bg-emerald-600 hover:bg-emerald-700"
-                disabled={isLoading}
               >
-                {isLoading ? 'Generating...' : 'Customize & Generate'}
+              Customize & Generate
               </button>
             </div>
           </div>

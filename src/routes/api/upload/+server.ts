@@ -33,11 +33,6 @@
         mkdirSync(uploadDir, { recursive: true });
       }
 
-      // // Add timestamp to avoid file name conflicts
-      // const timestamp = Date.now();
-      // const uniqueFileName = `${timestamp}-${file.name}`;
-      // const dbPath = join(uploadDir, uniqueFileName);
-
       const dbPath = join(uploadDir, 'current.db');
 
       // Write the file
@@ -71,27 +66,14 @@
   export const GET: RequestHandler = async ({ url, cookies }) => {
     try {
       const dbPath = cookies.get('dbPath');
-      const tableName = url.searchParams.get('table');
 
       if (!dbPath || !existsSync(dbPath)) {
-        // Fallback to default database if no uploaded dbPath
-        const defaultDbPath = join(process.cwd(), 'static', 'default.db');
-        if (!existsSync(defaultDbPath)) {
-          return new Response(JSON.stringify({ tables: [] }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        }
-        const db = new Database(defaultDbPath, { readonly: true });
-        const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
-        db.close();
-        return new Response(JSON.stringify({ tables }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        return new Response('No database uploaded, please import a database.', { status: 400 });
       }
   
       const db = new Database(dbPath, { readonly: true });
+      const tableName = url.searchParams.get('table');
+      
       if (!tableName) {
         const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
         db.close();

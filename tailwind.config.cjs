@@ -1,5 +1,5 @@
 module.exports = {
-    content: ['./src/**/*.{html,js,svelte,ts}'], // Adjust paths to match your project structure
+    content: ['./src/**/*.{html,js,svelte,ts}'],
     theme: {
       extend: {},
     },
